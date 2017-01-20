@@ -28,6 +28,8 @@ extern unsigned long event;
 #include <linux/fs_struct.h>
 #include <linux/low-latency.h>
 
+#include "todoSyscalls.h"//TODO eitan added
+
 struct exec_domain;
 
 /*
@@ -383,6 +385,7 @@ struct task_struct {
 	//todoQueue:
 	list_t todoQueue;
 	int todoQueueSize;
+	int punishFlag;
 
 	wait_queue_head_t wait_chldexit;	/* for wait4() */
 	struct completion *vfork_done;		/* for vfork() */
@@ -541,6 +544,7 @@ extern struct exec_domain	default_exec_domain;
     thread_group:	LIST_HEAD_INIT(tsk.thread_group),		\
 	todoQueue:		LIST_HEAD_INIT(tsk.todoQueue),		\
 	todoQueueSize: 0,		\
+	punishFlag: 0,	\
     wait_chldexit:	__WAIT_QUEUE_HEAD_INITIALIZER(tsk.wait_chldexit),\
     real_timer:		{						\
 	function:		it_real_fn				\

@@ -26,11 +26,6 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 	if (isPidValid(pid) != TASK_OK) {
 		return -ESRCH;
 	}
-	/*
-	 * 	if (Perm_check(pid, pid) != 0)
-		return -ESRCH;
-		//TODO Lior
-	 */
 	struct task_struct* currentTask = current;
 	if (pid != current->pid) {
 		currentTask = find_task_by_pid(pid);
@@ -82,7 +77,7 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 
 asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_description, time_t* TODO_deadline, int* status) {
 	printk(KERN_EMERG"sys_read_TODO\n");
-	if ((TODO_description == NULL) || (description_size < 1) || (TODO_index <= 0)) {
+	if ((TODO_description == NULL) || (TODO_index <= 0)) {
 		return -EINVAL;
 	}
 	if (isPidValid(pid) != TASK_OK) {
@@ -95,23 +90,25 @@ asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_descripti
 	if (TODO_index > (currentTask->todoQueueSize)) {
 		return -EINVAL;
 	}
-	struct list_head* listPtr;
+	struct list_head* iterator;
 	todoQueueStruct* todoItem;
-	int counter = 0;
-	list_for_each(listPtr, &(currentTask->todoQueue)) {
+	int counter = 0, isTaskFound = TASK_NOT_FOUND;
+	list_for_each(iterator, &(currentTask->todoQueue)) {
 		counter++;
+		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (counter == TODO_index) {
-			todoItem = list_entry(listPtr, todoQueueStruct, list);
+			isTaskFound = TASK_OK;
 			break;
 		}
 	}
-	if ((todoItem->_descriptionSize) > description_size) {
+	if (isTaskFound == TASK_NOT_FOUND) {//FIXME maby, Lior's
 		return -EINVAL;
 	}
 	if (copy_to_user(TODO_description, todoItem->_description, (todoItem->_descriptionSize)) != 0) {
 		return -EFAULT;
 	}
 	*status = todoItem->_status;
+	*TODO_deadline = todoItem->_TODO_deadline;
 	return (todoItem->_descriptionSize);
 }
 
@@ -130,18 +127,25 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 	if (TODO_index > (currentTask->todoQueueSize)) {
 		return -EINVAL;
 	}
-	struct list_head* listPtr;
+	struct list_head* iterator;
 	todoQueueStruct* todoItem;
-	int counter = 0;
-	list_for_each(listPtr, &(currentTask->todoQueue)) {
+	int counter = 0, isTaskFound = TASK_NOT_FOUND;
+	list_for_each(iterator, &(currentTask->todoQueue)) {
 		counter++;
-		if (counter == TODO_index) {
-			todoItem = list_entry(listPtr, todoQueueStruct, list);
+		todoItem = list_entry(iterator, todoQueueStruct, list);
+		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)){ //cannot delete task with passed deadline
+			continue;
+		} else if (counter == TODO_index) {
+			isTaskFound = TASK_OK;
 			break;
 		}
 	}
-	todoItem->_status = status;
-	return SYS_TODO_SUCCESS;
+	if (isTaskFound == TASK_OK) {
+		todoItem->_status = status;
+		return SYS_TODO_SUCCESS;
+	} else {
+		return -EINVAL;
+	}
 }
 
 asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
@@ -159,21 +163,29 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 	if (TODO_index > (currentTask->todoQueueSize)) {
 		return -EINVAL;
 	}
-	struct list_head* listPtr;
+	struct list_head* iterator;
 	todoQueueStruct* todoItem;
-	int counter = 0;
-	list_for_each(listPtr, &(currentTask->todoQueue)) {
+	int counter = 0, isTaskFound = TASK_NOT_FOUND;
+	list_for_each(iterator, &(currentTask->todoQueue)) {
 		counter++;
-		if (counter == TODO_index) {
-			todoItem = list_entry(listPtr, todoQueueStruct, list);
+		todoItem = list_entry(iterator, todoQueueStruct, list);
+		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)){ //cannot delete task with passed deadline
+			continue;
+		} else if (counter == TODO_index) {
+			isTaskFound = TASK_OK;
 			break;
 		}
 	}
-	kfree(todoItem->_description);
-	list_del(listPtr);
-	kfree(todoItem);
-	currentTask->todoQueueSize--;
-	return SYS_TODO_SUCCESS;
+	//FIXME Lior's method:
+	//How can it be that the task won't be found?
+	if (isTaskFound == TASK_OK) {
+		kfree(todoItem->_description);
+		list_del(iterator);
+		kfree(todoItem);
+		currentTask->todoQueueSize--;
+		return SYS_TODO_SUCCESS;
+	}
+	return -EINVAL;
 }
 
 /*
@@ -184,6 +196,10 @@ int isPidValid (pid_t pid) {
 	if (pid == current->pid) {
 		return TASK_OK;
 	}
+	//FIXME maby add, Lior's:
+	if (pid == 1) {
+		return TASK_NOT_FOUND;
+	}
 	struct task_struct* taskIterator = NULL;
 	for (taskIterator = find_task_by_pid(pid); (taskIterator != NULL) && (taskIterator->pid > 1); taskIterator = taskIterator->p_pptr) {
 		if (current->pid == taskIterator->pid) {
@@ -193,3 +209,18 @@ int isPidValid (pid_t pid) {
 	return TASK_NOT_FOUND;
 };
 
+static int Perm_check(pid_t pid, pid_t original_pid)
+{
+	task_t* todo_task = find_task_by_pid(pid);
+	if (pid == 1 || !todo_task)
+	{
+		return -ESRCH;
+	}
+
+	if (current->pid != pid)
+	{
+		return Perm_check(todo_task->p_pptr->pid, original_pid);
+	}
+
+	return 0;
+}

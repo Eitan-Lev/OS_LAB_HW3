@@ -19,7 +19,7 @@ typedef struct todoQueueStruct_t {
 	int _descriptionSize;
 	struct list_head list;
 	time_t _TODO_deadline;//FIXME Itamar
-	time_t deadlineInSecs;//FIXME Itamar
+	//time_t deadlineInSecs;//FIXME Itamar
 } todoQueueStruct;
 
 int isPidValid (pid_t pid);
