@@ -23,12 +23,37 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 	if ((TODO_description == NULL) || (description_size < 1) || (TODO_deadline < CURRENT_TIME)) {
 		return -EINVAL;
 	}
-	struct task_struct* currentTask = current;
+	/*struct task_struct* currentTask = current;
 	if (pid != current->pid) {
 		if (isPidValid(pid) != TASK_OK) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+	}*/
+	struct task_struct* currentTask = current;
+	struct task_struct* task_iterator;
+	int is_valid = 0;
+	int is_chld = 0;
+	if (pid != current->pid){
+		for_each_task(currentTask) {
+        /* this pointlessly prints the name and PID of each task */
+			if (pid == currentTask->pid){
+				is_valid = 1;
+				break;
+			}
+		}
+		if (is_valid == 0){ //no such PID in system
+			return -ESRCH;
+		}
+		for (task_iterator = currentTask; task_iterator != &init_task; task_iterator = task_iterator->p_pptr){
+			if (current->pid == task_iterator->pid){
+				is_chld = 1;
+				break;
+			}
+		}
+		if (!is_chld){
+			return -ESRCH;
+		}
 	}
 	/*if (isPidValid(pid) != TASK_OK) {
 		return -ESRCH;
@@ -87,12 +112,37 @@ asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_descripti
 	if ((TODO_description == NULL) || (TODO_index <= 0)) {
 		return -EINVAL;
 	}
-	struct task_struct* currentTask = current;
+	/*struct task_struct* currentTask = current;
 	if (pid != current->pid) {
 		if (isPidValid(pid) != TASK_OK) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+	}*/
+	struct task_struct* currentTask = current;
+	struct task_struct* task_iterator;
+	int is_valid = 0;
+	int is_chld = 0;
+	if (pid != current->pid){
+		for_each_task(currentTask) {
+        /* this pointlessly prints the name and PID of each task */
+			if (pid == currentTask->pid){
+				is_valid = 1;
+				break;
+			}
+		}
+		if (is_valid == 0){ //no such PID in system
+			return -ESRCH;
+		}
+		for (task_iterator = currentTask; task_iterator != &init_task; task_iterator = task_iterator->p_pptr){
+			if (current->pid == task_iterator->pid){
+				is_chld = 1;
+				break;
+			}
+		}
+		if (!is_chld){
+			return -ESRCH;
+		}
 	}
 	/*if (isPidValid(pid) != TASK_OK) {
 		return -ESRCH;
@@ -131,12 +181,37 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 	if (TODO_index <= 0) {
 		return -EINVAL;
 	}
-	struct task_struct* currentTask = current;
+	/*struct task_struct* currentTask = current;
 	if (pid != current->pid) {
 		if (isPidValid(pid) != TASK_OK) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+	}*/
+	struct task_struct* currentTask = current;
+	struct task_struct* task_iterator;
+	int is_valid = 0;
+	int is_chld = 0;
+	if (pid != current->pid){
+		for_each_task(currentTask) {
+        /* this pointlessly prints the name and PID of each task */
+			if (pid == currentTask->pid){
+				is_valid = 1;
+				break;
+			}
+		}
+		if (is_valid == 0){ //no such PID in system
+			return -ESRCH;
+		}
+		for (task_iterator = currentTask; task_iterator != &init_task; task_iterator = task_iterator->p_pptr){
+			if (current->pid == task_iterator->pid){
+				is_chld = 1;
+				break;
+			}
+		}
+		if (!is_chld){
+			return -ESRCH;
+		}
 	}
 	/*if (isPidValid(pid) != TASK_OK) {
 		return -ESRCH;
@@ -156,7 +231,8 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) { //cannot delete task with passed deadline
 			continue;
-		} else if (counter == TODO_index) {
+		}
+		if (counter == TODO_index) {
 			isTaskFound = TASK_OK;
 			break;
 		}
@@ -174,12 +250,37 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 	if (TODO_index <= 0) {
 		return -EINVAL;
 	}
-	struct task_struct* currentTask = current;
+	/*struct task_struct* currentTask = current;
 	if (pid != current->pid) {
 		if (isPidValid(pid) != TASK_OK) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+	}*/
+	struct task_struct* currentTask = current;
+	struct task_struct* task_iterator;
+	int is_valid = 0;
+	int is_chld = 0;
+	if (pid != current->pid){
+		for_each_task(currentTask) {
+        /* this pointlessly prints the name and PID of each task */
+			if (pid == currentTask->pid){
+				is_valid = 1;
+				break;
+			}
+		}
+		if (is_valid == 0){ //no such PID in system
+			return -ESRCH;
+		}
+		for (task_iterator = currentTask; task_iterator != &init_task; task_iterator = task_iterator->p_pptr){
+			if (current->pid == task_iterator->pid){
+				is_chld = 1;
+				break;
+			}
+		}
+		if (!is_chld){
+			return -ESRCH;
+		}
 	}
 	/*if (isPidValid(pid) != TASK_OK) {
 		return -ESRCH;
@@ -194,7 +295,29 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 	struct list_head* iterator;
 	todoQueueStruct* todoItem;
 	int counter = 0, isTaskFound = TASK_NOT_FOUND;
-	list_for_each(iterator, &(currentTask->todoQueue)) {
+	//
+	int i = 0;
+	struct list_head* n;
+	list_for_each_safe(iterator,n,&(currentTask->todoQueue)){
+		todoItem = list_entry(iterator,todoQueueStruct,list);
+		if ((todoItem->_TODO_deadline<CURRENT_TIME)&&(todoItem->_status==0)){ //cannot delete task with passed deadline
+			continue;
+		}
+		if (i!=TODO_index-1){
+			todoItem = list_entry(iterator,todoQueueStruct,list);
+			i++;
+			continue;
+		} else {
+		list_del(iterator);
+		kfree(todoItem->_description);
+		kfree(todoItem);
+		currentTask->todoQueueSize--;
+		return SYS_TODO_SUCCESS;
+		}
+	}
+	return -EINVAL;
+	//
+	/*list_for_each(iterator, &(currentTask->todoQueue)) {
 		counter++;
 		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)){ //cannot delete task with passed deadline
@@ -208,12 +331,12 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 	//How can it be that the task won't be found?
 	if (isTaskFound == TASK_OK) {
 		kfree(todoItem->_description);
-		list_del(iterator);
 		kfree(todoItem);
+		list_del(iterator);
 		currentTask->todoQueueSize--;
 		return SYS_TODO_SUCCESS;
 	}
-	return -EINVAL;
+	return -EINVAL;*/
 }
 
 /*
@@ -221,17 +344,17 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
  * Return values- TASK_OK if it's current task or found, TASK_NOT_FOUND otherwise
  */
 int isPidValid (pid_t pid) {
-	/*if (pid == current->pid) {
+	if (pid == current->pid) {
 		return TASK_OK;
-	}*/
-	struct task_struct *task = current;
-	struct task_struct *task_iterator;
-	int is_valid=0;
-	int is_chld=0;
+	}
+	struct task_struct* task = current;
+	struct task_struct* task_iterator;
+	int is_valid = 0;
+	int is_chld = 0;
 	for_each_task(task) {
     /* this pointlessly prints the name and PID of each task */
 		if (pid == task->pid){
-			is_valid=1;
+			is_valid = 1;
 			break;
 		}
 	}
