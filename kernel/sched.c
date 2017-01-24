@@ -62,7 +62,7 @@
 #define INTERACTIVE_DELTA	2
 #define MAX_SLEEP_AVG		(2*HZ)
 #define STARVATION_LIMIT	(2*HZ)
-//#define LATE_PENALTY 60//TODO Itamar idea, dont want to copy
+#define LATE_PENALTY 60
 /*
  * If a task is 'interactive' then we reinsert it in the active
  * array after it has expired its current timeslice. (it will not
@@ -738,22 +738,24 @@ void scheduler_tick(int user_tick, int system)
 	else
 		kstat.per_cpu_user[cpu] += user_tick;
 	kstat.per_cpu_system[cpu] += system;
-	// TODO Itamar
-	if (p->todoQueueSize > 0) {
+	if (p->todoQueueSize>0) {
 		//printk(KERN_EMERG"printing inside sched_tick: process task list size is: %d\n",p->to_do_list_size);
-		struct list_head* iterator;
+		struct list_head* pos;
 		struct list_head* n;
-		todoQueueStruct* todoItem;
-		list_for_each(iterator, &(p->todoQueue)) {
-			todoItem = list_entry(iterator, todoQueueStruct, list);
-			if (((todoItem->deadline) < CURRENT_TIME) && ((todoItem->status) == 0)) {
-				p->punishFlag = 1;
-				set_tsk_need_resched(p);//TODO not sure why, Itamar
+		todoQueueStruct* tmp;
+		list_for_each_safe(pos,n,&(p->todoQueue)){
+			tmp = list_entry(pos,todoQueueStruct,list);
+			if ((tmp->_TODO_deadline<CURRENT_TIME)&&(tmp->_status==0)){
+				printk(KERN_EMERG"inside sched tick: first expired task description is: %s \n",tmp->_description);
+				printk(KERN_EMERG"inside sched tick: first expired task deadline is: %ld \n",tmp->_TODO_deadline);
+				printk(KERN_EMERG"inside sched tick: current time is: %ld \n",CURRENT_TIME);
+				printk(KERN_EMERG"inside sched tick: penalty flag changed to 1 \n");
+				p->punishFlag=1;
+				set_tsk_need_resched(p);
 				break;
 			}
 		}
 	}
-	//TODO end of itamar
 	/* Task might have expired already, but not scheduled off yet */
 	if (p->array != rq->active) {
 		set_tsk_need_resched(p);
@@ -810,13 +812,10 @@ out:
 
 void scheduling_functions_start_here(void) { }
 
-//TODO Itamar:
-static void todo_wake_process(unsigned long todoTask)
+static void process_timeout(unsigned long __data)
 {
-	wake_up_process((task_t*)todoTask);
-	set_tsk_need_resched((task_t*)todoTask);//TODO Lior's, not sure
+	wake_up_process((task_t *)__data);
 }
-//TODO end of Itamar
 
 /*
  * 'schedule()' is the main scheduler function.
@@ -833,33 +832,40 @@ asmlinkage void schedule(void)
 		BUG();
 
 need_resched:
-	//TODO Itamar:
-	if (current->punishFlag) {//TODO why prev? Itamar, used to be prev, current because of Lior
-		set_current_state(TASK_INTERRUPTIBLE);
-		struct list_head* iterator;
-		todoQueueStruct* todoItem;
-		list_for_each(iterator, &(prev->todoQueue)) {
-			todoItem = list_entry(iterator, todoQueueStruct, list);
-			if (((todoItem->deadline) < CURRENT_TIME) && ((todoItem->status) == 0)) {
-				list_del(iterator);
-				kfree(todoItem->description);
-				kfree(todoItem);
-				prev->todoQueueSize--;
+	prev = current;
+	rq = this_rq();
+	if (prev->punishFlag==1){
+		struct list_head* pos;
+		struct list_head* n;
+		todoQueueStruct* tmp;
+		list_for_each_safe(pos,n,&(prev->todoQueue)){
+			tmp = list_entry(pos,todoQueueStruct,list);
+			if ((tmp->_TODO_deadline<CURRENT_TIME)&&(tmp->_status==0)){
+				printk(KERN_EMERG"inside scheduler: first expired task description is: %s \n",tmp->_description);
+				printk(KERN_EMERG"inside scheduler: first expired task deadline is: %ld \n",tmp->_TODO_deadline);
+				printk(KERN_EMERG"inside scheduler: deleting first expired task deadline\n");
+				list_del(pos);
+	            kfree(tmp->_description);			
+	            kfree(tmp);			
+	            prev->todoQueueSize--;			
+	            printk(KERN_EMERG"inside scheduler: item deleted \n");
 				break;
 			}
 		}
-		//Set Timer:
-		struct timer_list todoTimer;
-		init_timer(&todoTimer);
-		todoTimer.data = (unsigned long)current;
-		todoTimer.function = todo_wake_process;
-		todoTimer.expires = (unsigned long)(60*HZ + jiffies);
-		prev->punishFlag = 0;//TODO Itamar only, why?
-		add_timer(&todoTimer);
+		prev->state = TASK_INTERRUPTIBLE;
+	    printk(KERN_EMERG"setting timer....\n");
+	    struct timer_list timer;
+	    unsigned long expire;
+	    expire = LATE_PENALTY*HZ + jiffies;
+	    init_timer(&timer);
+	    timer.expires = expire;
+	    timer.data = (unsigned long)prev;
+	    timer.function = process_timeout;
+	    printk(KERN_EMERG"timer set\n");
+	    prev->punishFlag=0;
+	    add_timer(&timer);
 	}
-	//TODO end of Itamar
-	prev = current;
-	rq = this_rq();
+
 	release_kernel_lock(prev, smp_processor_id());
 	prepare_arch_schedule(prev);
 	prev->sleep_timestamp = jiffies;

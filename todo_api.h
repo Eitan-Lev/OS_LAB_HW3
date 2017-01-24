@@ -15,7 +15,7 @@
 //TODO need to add files:
 //sched.c
 
-int add_TODO(pid_t pid, const char *TODO_description, ssize_t description_size, time_t TODO_dealine) {
+int add_TODO(pid_t pid, const char *TODO_description, ssize_t description_size, time_t TODO_deadline) {
 	int res;
 	__asm__
 	(
@@ -27,7 +27,7 @@ int add_TODO(pid_t pid, const char *TODO_description, ssize_t description_size, 
 		"movl %1, %%ebx;"
 		"movl %2, %%ecx;"
 		"movl %3, %%edx;"
-		"movl %4, %%esi"
+		"movl %4, %%esi;"
 		"int $0x80;"
 		"movl %%eax,%0;"
 		"popl %%esi;"
