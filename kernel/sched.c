@@ -701,6 +701,12 @@ static inline void idle_tick(void)
 
 #endif
 
+//Added this part:
+static void todoWakeTask(unsigned long todoTask) {
+	wake_up_process((task_t*)todoTask);
+}
+//End of addition.
+
 /*
  * We place interactive tasks back into the active array, if possible.
  *
@@ -738,24 +744,48 @@ void scheduler_tick(int user_tick, int system)
 	else
 		kstat.per_cpu_user[cpu] += user_tick;
 	kstat.per_cpu_system[cpu] += system;
-	if (p->todoQueueSize>0) {
-		//printk(KERN_EMERG"printing inside sched_tick: process task list size is: %d\n",p->to_do_list_size);
-		struct list_head* pos;
-		struct list_head* n;
-		todoQueueStruct* tmp;
-		list_for_each_safe(pos,n,&(p->todoQueue)){
-			tmp = list_entry(pos,todoQueueStruct,list);
-			if ((tmp->_TODO_deadline<CURRENT_TIME)&&(tmp->_status==0)){
-				printk(KERN_EMERG"inside sched tick: first expired task description is: %s \n",tmp->_description);
-				printk(KERN_EMERG"inside sched tick: first expired task deadline is: %ld \n",tmp->_TODO_deadline);
-				printk(KERN_EMERG"inside sched tick: current time is: %ld \n",CURRENT_TIME);
-				printk(KERN_EMERG"inside sched tick: penalty flag changed to 1 \n");
-				p->punishFlag=1;
-				set_tsk_need_resched(p);
+
+	//Added this part:
+	//if (p->todoQueueSize > 0) {TODO
+		struct list_head* iterator;
+		struct list_head* safeListing;
+		todoQueueStruct* todoItem;
+		list_for_each_safe(iterator, safeListing, &(p->todoQueue)) {
+			todoItem = list_entry(iterator, todoQueueStruct, list);
+			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
+				p->punishFlag = 1;
+				//set_tsk_need_resched(p);
 				break;
 			}
 		}
+	//}
+	if (current->punishFlag == 1) {
+		set_tsk_need_resched(p);
+		current->state = TASK_INTERRUPTIBLE;
+		struct list_head* iterator;
+		struct list_head* safeListing;
+		todoQueueStruct* todoItem;
+		list_for_each_safe(iterator, safeListing, &(current->todoQueue)) {
+			todoItem = list_entry(iterator, todoQueueStruct, list);
+			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
+				list_del(iterator);
+				kfree(todoItem->_description);
+				kfree(todoItem);
+				current->todoQueueSize--;
+				break;
+			}
+		}
+		//current->state = TASK_INTERRUPTIBLE;
+		current->punishFlag = 0;
+		struct timer_list todoTimer;
+		init_timer(&todoTimer);
+		todoTimer.expires = (unsigned long)(60*HZ + jiffies);
+		todoTimer.data = (unsigned long)current;
+		todoTimer.function = todoWakeTask;
+		add_timer(&todoTimer);
 	}
+	//End of addition.
+
 	/* Task might have expired already, but not scheduled off yet */
 	if (p->array != rq->active) {
 		set_tsk_need_resched(p);
@@ -812,10 +842,7 @@ out:
 
 void scheduling_functions_start_here(void) { }
 
-static void process_timeout(unsigned long __data)
-{
-	wake_up_process((task_t *)__data);
-}
+
 
 /*
  * 'schedule()' is the main scheduler function.
@@ -834,37 +861,36 @@ asmlinkage void schedule(void)
 need_resched:
 	prev = current;
 	rq = this_rq();
-	if (prev->punishFlag==1){
-		struct list_head* pos;
-		struct list_head* n;
-		todoQueueStruct* tmp;
-		list_for_each_safe(pos,n,&(prev->todoQueue)){
-			tmp = list_entry(pos,todoQueueStruct,list);
-			if ((tmp->_TODO_deadline<CURRENT_TIME)&&(tmp->_status==0)){
-				printk(KERN_EMERG"inside scheduler: first expired task description is: %s \n",tmp->_description);
-				printk(KERN_EMERG"inside scheduler: first expired task deadline is: %ld \n",tmp->_TODO_deadline);
-				printk(KERN_EMERG"inside scheduler: deleting first expired task deadline\n");
-				list_del(pos);
-	            kfree(tmp->_description);			
-	            kfree(tmp);			
+
+	//Added this part:
+	/*TODO
+	if (prev->punishFlag == 1) {
+		struct list_head* iterator;
+		struct list_head* safeListing;
+		todoQueueStruct* todoItem;
+		list_for_each_safe(iterator, safeListing, &(prev->todoQueue)) {
+			todoItem = list_entry(iterator, todoQueueStruct, list);
+			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
+				list_del(iterator);
+	            kfree(todoItem->_description);
+	            kfree(todoItem);
 	            prev->todoQueueSize--;			
-	            printk(KERN_EMERG"inside scheduler: item deleted \n");
 				break;
 			}
 		}
 		prev->state = TASK_INTERRUPTIBLE;
-	    printk(KERN_EMERG"setting timer....\n");
-	    struct timer_list timer;
-	    unsigned long expire;
-	    expire = LATE_PENALTY*HZ + jiffies;
-	    init_timer(&timer);
-	    timer.expires = expire;
-	    timer.data = (unsigned long)prev;
-	    timer.function = process_timeout;
-	    printk(KERN_EMERG"timer set\n");
-	    prev->punishFlag=0;
-	    add_timer(&timer);
+	    struct timer_list todoTimer;
+	    //unsigned long expire;
+	    //expire = LATE_PENALTY*HZ + jiffies;
+	    init_timer(&todoTimer);
+	    todoTimer.expires = (unsigned long)(60*HZ + jiffies);
+	    todoTimer.data = (unsigned long)prev;
+	    todoTimer.function = process_timeout;
+	    prev->punishFlag = 0;
+	    add_timer(&todoTimer);
 	}
+	*/
+	//End of addition.
 
 	release_kernel_lock(prev, smp_processor_id());
 	prepare_arch_schedule(prev);
