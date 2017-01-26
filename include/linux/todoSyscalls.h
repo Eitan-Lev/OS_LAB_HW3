@@ -5,14 +5,12 @@
  *      Author: Eitan Levin
  */
 
-#ifndef TODOSYSCALLS_H_
-#define TODOSYSCALLS_H_
+#ifndef _TODOSYSCALLS_H_
+#define _TODOSYSCALLS_H_
 
-#include <linux/linkage.h>
-//#include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/types.h>
-//#include <linux/time.h>//FIXME Itamar
+#include <linux/linkage.h>
 
 typedef struct todoQueueStruct_t {
 	int _status;

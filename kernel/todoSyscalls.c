@@ -6,12 +6,12 @@
  */
 
 #include <linux/todoSyscalls.h>
-#include <linux/kernel.h>
+//#include <linux/kernel.h>//TODO
 #include <linux/slab.h>
 #include <asm/uaccess.h>
-#include <asm/current.h>
+//#include <asm/current.h>
 #include <linux/sched.h>
-#include <linux/types.h>
+//#include <linux/types.h>
 
 
 #define SYS_TODO_SUCCESS 0
