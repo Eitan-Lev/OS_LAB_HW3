@@ -7,13 +7,6 @@
 #define TODO_SUCCESS 0
 #define TODO_ERROR (-1)
 
-//TODO no need to change:
-//exit.c
-//fork.c
-//Makefile
-//entry.s
-//TODO need to add files:
-//sched.c
 
 int add_TODO(pid_t pid, const char *TODO_description, ssize_t description_size, time_t TODO_deadline) {
 	int res;

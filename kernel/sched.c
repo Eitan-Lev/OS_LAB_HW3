@@ -746,36 +746,39 @@ void scheduler_tick(int user_tick, int system)
 	kstat.per_cpu_system[cpu] += system;
 
 	//Added this part:
-	//if (p->todoQueueSize > 0) {TODO
-		struct list_head* iterator;
-		struct list_head* safeListing;
-		todoQueueStruct* todoItem;
-		list_for_each_safe(iterator, safeListing, &(p->todoQueue)) {
-			todoItem = list_entry(iterator, todoQueueStruct, list);
-			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
-				p->punishFlag = 1;
-				//set_tsk_need_resched(p);
-				break;
-			}
+	struct list_head* iterator;
+	struct list_head* safeListing;
+	todoQueueStruct* todoItem;
+	list_for_each_safe(iterator, safeListing, &(p->todoQueue)) {
+		todoItem = list_entry(iterator, todoQueueStruct, list);
+		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
+			p->punishFlag = 1;
+			break;
 		}
-	//}
+	}
 	if (current->punishFlag == 1) {
 		set_tsk_need_resched(p);
 		current->state = TASK_INTERRUPTIBLE;
-		struct list_head* iterator;
+		/*struct list_head* iterator;
 		struct list_head* safeListing;
 		todoQueueStruct* todoItem;
+		//Search again for the task to fix bugs
 		list_for_each_safe(iterator, safeListing, &(current->todoQueue)) {
 			todoItem = list_entry(iterator, todoQueueStruct, list);
 			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
-				list_del(iterator);
 				kfree(todoItem->_description);
 				kfree(todoItem);
+				list_del(iterator);
 				current->todoQueueSize--;
 				break;
 			}
-		}
-		//current->state = TASK_INTERRUPTIBLE;
+		}*///TODO
+		//
+		kfree(todoItem->_description);
+		kfree(todoItem);
+		list_del(iterator);
+		current->todoQueueSize--;
+		//
 		current->punishFlag = 0;
 		struct timer_list todoTimer;
 		init_timer(&todoTimer);
@@ -861,36 +864,6 @@ asmlinkage void schedule(void)
 need_resched:
 	prev = current;
 	rq = this_rq();
-
-	//Added this part:
-	/*TODO
-	if (prev->punishFlag == 1) {
-		struct list_head* iterator;
-		struct list_head* safeListing;
-		todoQueueStruct* todoItem;
-		list_for_each_safe(iterator, safeListing, &(prev->todoQueue)) {
-			todoItem = list_entry(iterator, todoQueueStruct, list);
-			if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
-				list_del(iterator);
-	            kfree(todoItem->_description);
-	            kfree(todoItem);
-	            prev->todoQueueSize--;			
-				break;
-			}
-		}
-		prev->state = TASK_INTERRUPTIBLE;
-	    struct timer_list todoTimer;
-	    //unsigned long expire;
-	    //expire = LATE_PENALTY*HZ + jiffies;
-	    init_timer(&todoTimer);
-	    todoTimer.expires = (unsigned long)(60*HZ + jiffies);
-	    todoTimer.data = (unsigned long)prev;
-	    todoTimer.function = process_timeout;
-	    prev->punishFlag = 0;
-	    add_timer(&todoTimer);
-	}
-	*/
-	//End of addition.
 
 	release_kernel_lock(prev, smp_processor_id());
 	prepare_arch_schedule(prev);

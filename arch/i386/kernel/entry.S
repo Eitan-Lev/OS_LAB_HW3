@@ -649,10 +649,10 @@ ENTRY(sys_call_table)
 	.long SYMBOL_NAME(sys_ni_syscall)	/* 240 reserved for futex */
 	.long SYMBOL_NAME(sys_sched_setaffinity)
 	.long SYMBOL_NAME(sys_sched_getaffinity)
-	.long SYMBOL_NAME(sys_add_TODO)		/* 243 */
-	.long SYMBOL_NAME(sys_read_TODO)	/*  244 */
-	.long SYMBOL_NAME(sys_mark_TODO)	/* 245 */
-	.long SYMBOL_NAME(sys_delete_TODO)	/* 246 */
+	.long SYMBOL_NAME(sys_add_TODO)		/* 243 added */
+	.long SYMBOL_NAME(sys_read_TODO)	/* 244 added */
+	.long SYMBOL_NAME(sys_mark_TODO)	/* 245 added */
+	.long SYMBOL_NAME(sys_delete_TODO)	/* 246 added */
 	.rept NR_syscalls-(.-sys_call_table)/4
 		.long SYMBOL_NAME(sys_ni_syscall)
 	.endr

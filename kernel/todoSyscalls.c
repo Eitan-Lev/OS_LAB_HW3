@@ -19,7 +19,6 @@
 #define TASK_NOT_FOUND 3
 
 asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t description_size, time_t TODO_deadline) {
-	printk(KERN_EMERG"sys_add_TODO\n");
 	if ((TODO_description == NULL) || (description_size < 1) || (TODO_deadline < CURRENT_TIME)) {
 		return -EINVAL;
 	}
@@ -29,6 +28,9 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+		if (currentTask == NULL) {//To make sure, should not happen.
+			return -ESRCH;
+		}
 	}
 	/*struct task_struct* currentTask = current;
 	struct task_struct* task_iterator;
@@ -80,10 +82,11 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 	newTODOItem->_descriptionSize = description_size;
 	newTODOItem->_TODO_deadline = TODO_deadline;
 	struct list_head* iterator;
-	if ((currentTask->todoQueueSize) == 0) {//If first task in queue
+	struct list_head* safeListing;
+	if ((currentTask->todoQueueSize) == 0) {//If first task in queue, no need to search
 		list_add(&newTODOItem->list, &currentTask->todoQueue);
 	} else {
-		list_for_each(iterator ,&(currentTask->todoQueue)) {
+		list_for_each_safe(iterator, safeListing, &(currentTask->todoQueue)) {
 			if (TODO_deadline < ((list_entry(iterator, todoQueueStruct, list)->_TODO_deadline))) {
 				list_add_tail(&newTODOItem->list, iterator);
 				break;
@@ -99,7 +102,6 @@ asmlinkage int sys_add_TODO(pid_t pid, const char* TODO_description, ssize_t des
 }
 
 asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_description, time_t* TODO_deadline, int* status) {
-	printk(KERN_EMERG"sys_read_TODO\n");
 	if ((TODO_description == NULL) || (TODO_index <= 0)) {
 		return -EINVAL;
 	}
@@ -109,6 +111,9 @@ asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_descripti
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+		if (currentTask == NULL) {//To make sure, should not happen.
+			return -ESRCH;
+		}
 	}
 	/*struct task_struct* currentTask = current;
 	struct task_struct* task_iterator;
@@ -145,9 +150,10 @@ asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_descripti
 		return -EINVAL;
 	}
 	struct list_head* iterator;
+	struct list_head* safeListing;
 	todoQueueStruct* todoItem;
 	int counter = 0, isTaskFound = TASK_NOT_FOUND;
-	list_for_each(iterator, &(currentTask->todoQueue)) {
+	list_for_each_safe(iterator, safeListing, &(currentTask->todoQueue)) {
 		counter++;
 		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (counter == TODO_index) {
@@ -167,7 +173,6 @@ asmlinkage ssize_t sys_read_TODO(pid_t pid, int TODO_index, char* TODO_descripti
 }
 
 asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
-	printk(KERN_EMERG"sys_mark_TODO\n");
 	if (TODO_index <= 0) {
 		return -EINVAL;
 	}
@@ -177,6 +182,9 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+		if (currentTask == NULL) {//To make sure, should not happen.
+			return -ESRCH;
+		}
 	}
 	/*struct task_struct* currentTask = current;
 	struct task_struct* task_iterator;
@@ -213,9 +221,10 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 		return -EINVAL;
 	}
 	struct list_head* iterator;
+	struct list_head* safeListing;
 	todoQueueStruct* todoItem;
 	int counter = 0, isTaskFound = TASK_NOT_FOUND;
-	list_for_each(iterator, &(currentTask->todoQueue)) {
+	list_for_each_safe(iterator, safeListing, &(currentTask->todoQueue)) {
 		counter++;
 		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
@@ -236,7 +245,6 @@ asmlinkage int sys_mark_TODO(pid_t pid, int TODO_index, int status) {
 }
 
 asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
-	printk(KERN_EMERG"sys_delete_TODO\n");
 	if (TODO_index <= 0) {
 		return -EINVAL;
 	}
@@ -246,6 +254,9 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 			return -ESRCH;
 		}
 		currentTask = find_task_by_pid(pid);
+		if (currentTask == NULL) {//To make sure, should not happen.
+			return -ESRCH;
+		}
 	}
 	/*struct task_struct* currentTask = current;
 	struct task_struct* task_iterator;
@@ -282,6 +293,7 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 		return -EINVAL;
 	}
 	struct list_head* iterator;
+	struct list_head* safeListing;
 	todoQueueStruct* todoItem;
 	int counter = 0, isTaskFound = TASK_NOT_FOUND;
 	//
@@ -307,7 +319,7 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 	}
 	return -EINVAL;*/
 	//
-	list_for_each(iterator, &(currentTask->todoQueue)) {
+	list_for_each_safe(iterator, safeListing, &(currentTask->todoQueue)) {
 		counter++;
 		todoItem = list_entry(iterator, todoQueueStruct, list);
 		if (((todoItem->_TODO_deadline) < CURRENT_TIME) && ((todoItem->_status) == 0)) {
@@ -318,7 +330,7 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
 			break;
 		}
 	}
-	if (isTaskFound == TASK_OK) {
+	if (isTaskFound == TASK_OK) {//To make sure
 		kfree(todoItem->_description);
 		kfree(todoItem);
 		list_del(iterator);
@@ -333,38 +345,6 @@ asmlinkage int sys_delete_TODO(pid_t pid, int TODO_index) {
  * Return values- TASK_OK if it's current task or found, TASK_NOT_FOUND otherwise
  */
 int isPidValid (pid_t pid) {
-	/*if (pid == current->pid) {
-		return TASK_OK;
-	}
-	struct task_struct* task = current;
-	struct task_struct* task_iterator;
-	int is_valid = 0;
-	int is_chld = 0;
-	for_each_task(task) {
-		if (pid == task->pid){
-			is_valid = 1;
-			break;
-		}
-	}
-	if (is_valid == 0){ //no such PID in system
-		//return -ESRCH;
-		return TASK_NOT_FOUND;
-	}
-	for (task_iterator = task; task_iterator != &init_task; task_iterator = task_iterator->p_pptr){
-		if (current->pid == task_iterator->pid){
-			is_chld = 1;
-			break;
-		}
-	}
-	if (!is_chld){
-		//return -ESRCH;
-		return TASK_NOT_FOUND;
-	}
-	return TASK_OK;*/
-	//FIXME maby add, Lior's:
-	/*if (pid == 1) {
-		return TASK_NOT_FOUND;
-	}*/
 	struct task_struct* taskIterator = NULL;
 	for (taskIterator = find_task_by_pid(pid); (taskIterator != NULL) && (taskIterator->pid > 1); taskIterator = taskIterator->p_pptr) {
 		if (current->pid == taskIterator->pid) {
